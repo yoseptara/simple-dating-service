@@ -1,0 +1,89 @@
+variables:
+  DOCKER_IMAGE: esim-service
+  DOCKER_CONTAINER: esim-service-container
+  AWS_ECS_CLUSTER: chaca-ecs-cluster
+  AWS_ECS_SERVICE: esim-service
+  AWS_ECS_TASK_DEFINITION: esim-service-td
+  IMAGE_REPO: 427335784772.dkr.ecr.ap-southeast-1.amazonaws.com/esim-service
+  CREATE_DEPLOYMENT_SCRIPT_URL: https://gitlab.coinsbill.com/public-repository/ci-cd/-/raw/main/create-deployment.sh
+
+stages:
+  - build
+  - deploy
+
+before_script:
+  - aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 427335784772.dkr.ecr.ap-southeast-1.amazonaws.com
+
+build-development:
+  stage: build
+  only:
+    - development
+  script:
+    - docker build -t $DOCKER_IMAGE:dev .
+  tags:
+    - $DEV_RUNNER_TAG
+
+deploy-development:
+  stage: deploy
+  only:
+    - development
+  script:
+    - docker container rm $DOCKER_CONTAINER -f
+    - docker run -d -p 5036:$SERVER_PORT
+      --name=$DOCKER_CONTAINER
+      --network=chaca-network
+      --hostname=$DOCKER_CONTAINER
+      --restart unless-stopped
+      -e APP_ENV=$APP_ENV
+      -e CONTEXT_TIMEOUT=$CONTEXT_TIMEOUT
+      -e SERVER_PORT=$SERVER_PORT
+      -e BELIESIM_WEB_FRONTEND_URL=$BELIESIM_WEB_FRONTEND_URL
+      -e XENDIT_HOST_URL=$XENDIT_HOST_URL
+      -e XENDIT_WRITE_KEY=$XENDIT_WRITE_KEY
+      -e XENDIT_INVOICE_SUCCESS_REDIRECT_URL=$XENDIT_INVOICE_SUCCESS_REDIRECT_URL
+      -e XENDIT_INVOICE_FAILURE_REDIRECT_URL=$XENDIT_INVOICE_FAILURE_REDIRECT_URL
+      -e USIMSA_HOST_URL=$USIMSA_HOST_URL
+      -e USIMSA_ACCESS_KEY=$USIMSA_ACCESS_KEY
+      -e USIMSA_SECRET_KEY=$USIMSA_SECRET_KEY
+      -e POSTGRES_HOST=$POSTGRES_HOST
+      -e POSTGRES_PORT=$POSTGRES_PORT
+      -e POSTGRES_USERNAME=$POSTGRES_USERNAME
+      -e POSTGRES_PASS=$POSTGRES_PASS
+      -e POSTGRES_DB_NAME=$POSTGRES_DB_NAME
+      -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+      -e AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION
+      -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+      $DOCKER_IMAGE:dev
+    - docker image prune --force
+  tags:
+    - $DEV_RUNNER_TAG
+
+build-production:
+  stage: build
+  only:
+    - main
+  script:
+    - docker build -t $DOCKER_IMAGE:latest .
+    - docker tag $DOCKER_IMAGE:latest $IMAGE_REPO:latest
+    - docker push $IMAGE_REPO:latest
+    - docker image rm $DOCKER_IMAGE:latest
+  tags:
+    - $DEV_RUNNER_TAG
+
+deploy-production:
+  stage: deploy
+  when: manual
+  only:
+    - main
+  script:
+    - ECS_DEPLOYMENT_ID=$(aws ecs update-service --cluster $AWS_ECS_CLUSTER
+      --service $AWS_ECS_SERVICE --task-definition $AWS_ECS_TASK_DEFINITION --force-new-deployment
+      --output text --query 'service.deployments[?status==`PRIMARY`].id')
+    - curl $CREATE_DEPLOYMENT_SCRIPT_URL -o create-deployment.sh
+    - bash create-deployment.sh $ECS_DEPLOYMENT_ID
+  retry:
+    when:
+      - always
+    max: 2
+  tags:
+    - $DEV_RUNNER_TAG
