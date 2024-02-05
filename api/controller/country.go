@@ -2,9 +2,7 @@ package controller
 
 import (
 	"database/sql"
-	"esim-service/config"
-	"esim-service/domain"
-	"esim-service/domain/country"
+
 	"net/http"
 
 	"github.com/gin-gonic/gin"
