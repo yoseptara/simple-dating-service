@@ -10,12 +10,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type OrderController struct {
+type UserController struct {
 	Usecase order.Usecase
 	Env     *config.Env
 }
 
-func (oc *OrderController) CreateOrder(c *gin.Context) {
+func (oc *UserController) CreateOrder(c *gin.Context) {
 	var req order.CreateOrderReq
 
 	err := c.ShouldBindJSON(&req)
@@ -33,7 +33,7 @@ func (oc *OrderController) CreateOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, order)
 }
 
-func (oc *OrderController) HandleOrderInvoicePaymentCallback(c *gin.Context) {
+func (oc *UserController) HandleOrderInvoicePaymentCallback(c *gin.Context) {
 	var req order.InvoicePaymentCallback
 
 	err := c.ShouldBindJSON(&req)
@@ -56,7 +56,7 @@ func (oc *OrderController) HandleOrderInvoicePaymentCallback(c *gin.Context) {
 	c.JSON(http.StatusOK, order)
 }
 
-func (oc *OrderController) HandleUsimsaSubscribeOrderCallback(c *gin.Context) {
+func (oc *UserController) HandleUsimsaSubscribeOrderCallback(c *gin.Context) {
 	if c.Request.Method == http.MethodPost {
 		var req order.UsimsaSubscribedOrderReq
 

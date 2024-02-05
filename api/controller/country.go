@@ -2,8 +2,14 @@ package controller
 
 import (
 	"database/sql"
+<<<<<<< HEAD
 
+=======
+	"esim-service/config"
+	"esim-service/domain"
+>>>>>>> 5cc17bee3d7dc905b0f996385046d65a42c4841d
 	"net/http"
+	country "simple-dating-app-service/domain/user"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,17 +33,3 @@ func (cc *CountryController) ListWithPrice(c *gin.Context) {
 
 	c.JSON(http.StatusOK, countries)
 }
-
-// func (cc *CountryController) Create(c *gin.Context) {
-// 	var req dto.InsertCountryReq
-
-// 	err := c.ShouldBind(&req)
-
-// 	if err != nil {
-// 		c.JSON(http.StatusBadRequest, domain.ErrorResponse{Message: err.Error()})
-// 	}
-
-// 	arg := db.CreateCountryParams{}
-
-// 	country, err := cc.Usecase.Insert()
-// }
