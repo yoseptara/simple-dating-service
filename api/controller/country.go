@@ -2,12 +2,8 @@ package controller
 
 import (
 	"database/sql"
-<<<<<<< HEAD
-
-=======
 	"esim-service/config"
 	"esim-service/domain"
->>>>>>> 5cc17bee3d7dc905b0f996385046d65a42c4841d
 	"net/http"
 	country "simple-dating-app-service/domain/user"
 
