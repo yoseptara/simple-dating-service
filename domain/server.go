@@ -1,8 +1,8 @@
 package domain
 
 import (
-	"esim-service/config"
-	db "esim-service/db/sqlc"
+	"simple-dating-app-service/config"
+	db "simple-dating-app-service/db/sqlc"
 	"time"
 )
 

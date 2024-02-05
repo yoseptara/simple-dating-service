@@ -2,9 +2,9 @@ package bootstrap
 
 import (
 	"database/sql"
-	"esim-service/config"
-	db "esim-service/db/sqlc"
 	"log"
+	"simple-dating-app-service/config"
+	db "simple-dating-app-service/db/sqlc"
 	"time"
 
 	_ "github.com/lib/pq"

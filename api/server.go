@@ -1,15 +1,11 @@
 package api
 
 import (
-	"esim-service/api/route"
-	"esim-service/config"
-	db "esim-service/db/sqlc"
-	"esim-service/domain"
-	"esim-service/domain/order"
-	repository "esim-service/repository/http"
-	"esim-service/service"
-	"esim-service/usecase"
 	"net/http"
+	"simple-dating-app-service/api/route"
+	"simple-dating-app-service/config"
+	"simple-dating-app-service/domain"
+	"simple-dating-app-service/usecase"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -86,31 +82,4 @@ func (server *Server) setupRouter() {
 
 func (server *Server) Start() error {
 	return server.router.Run(":" + server.Config.ServerPort)
-}
-
-func webhookHandler(ou order.Usecase) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if c.Request.Method == http.MethodPost {
-			var req order.UsimsaSubscribedOrderReq
-
-			err := c.ShouldBindJSON(&req)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, domain.ErrorResponse{Message: err.Error()})
-				return
-			}
-
-			order, err := ou.SendPurchasedEsimEmail(c, req.TopupId, req.Iccid, req.Smdp, req.ActivateCode, req.QrcodeImgUrl)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, domain.ErrorResponse{Message: err.Error()})
-				return
-			}
-
-			c.JSON(http.StatusOK, order)
-
-		} else {
-			c.JSON(http.StatusMethodNotAllowed, gin.H{
-				"message": "Invalid request method",
-			})
-		}
-	}
 }
