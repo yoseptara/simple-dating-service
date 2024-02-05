@@ -1,4 +1,4 @@
-package country
+package user
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 )
 
 type Usecase interface {
-	Create(c context.Context, params db.CreateUserParams) error
+	CreateUser(c context.Context, params db.CreateUserParams) (db.User, error)
+	GetUser(c context.Context, username string) (db.User, error)
 	ListSwipableProfiles(c context.Context) (*[]db.ListSwipableProfilesRow, error)
 }

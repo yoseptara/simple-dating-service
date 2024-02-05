@@ -1,11 +1,13 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"simple-dating-app-service/api/route"
 	"simple-dating-app-service/config"
+	db "simple-dating-app-service/db/sqlc"
 	"simple-dating-app-service/domain"
-	"simple-dating-app-service/usecase"
+	"simple-dating-app-service/token"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -19,9 +21,14 @@ type Server struct {
 
 // NewServer creates a new HTTP server and setup routing.
 func NewServer(env config.Env, store db.Store, timeout time.Duration) (*Server, error) {
+	tokenMaker, err := token.NewPasetoMaker(config.Env.TokenSymmetricKey)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create token maker: %w", err)
+
+	}
 
 	server := &Server{
-		ConcreteServer: domain.ConcreteServer{Store: store, Config: env, Timeout: timeout},
+		ConcreteServer: domain.ConcreteServer{Store: store, Config: env, Timeout: timeout, TokenMaker: tokenMaker},
 	}
 
 	server.setupRouter()
@@ -66,12 +73,6 @@ func (server *Server) setupRouter() {
 			"status": "OK",
 		})
 	})
-
-	xhr := repository.NewXenditHttpRepository(server.Config)
-	uhr := repository.NewUsimsaHttpRepository(server.Config)
-	ss := service.NewSmtpService(server.Config)
-	ou := usecase.NewOrderUsecase(&server.ConcreteServer, ss, xhr, uhr)
-	router.POST("/webhook", webhookHandler(ou))
 
 	route.NewCountryRouter(&server.ConcreteServer, router.Group("/countries"))
 	route.NewEsimRouter(&server.ConcreteServer, router.Group("/esims"))

@@ -47,6 +47,28 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const getUser = `-- name: GetUser :one
+SELECT id, username, password, fullname, email, total_swipes, last_swipe_date, swipe_count, is_premium FROM users
+WHERE username = $1 LIMIT 1
+`
+
+func (q *Queries) GetUser(ctx context.Context, username string) (User, error) {
+	row := q.queryRow(ctx, q.getUserStmt, getUser, username)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Password,
+		&i.Fullname,
+		&i.Email,
+		&i.TotalSwipes,
+		&i.LastSwipeDate,
+		&i.SwipeCount,
+		&i.IsPremium,
+	)
+	return i, err
+}
+
 const listSwipableProfiles = `-- name: ListSwipableProfiles :many
 SELECT users.id, username, password, fullname, email, total_swipes, last_swipe_date, swipe_count, is_premium, swipes.id, user_id, target_id, direction, swipe_date, "unique"
 FROM users

@@ -1,4 +1,4 @@
-package esim
+package swipe
 
 import (
 	"context"

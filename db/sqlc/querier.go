@@ -11,6 +11,7 @@ import (
 type Querier interface {
 	CreateOrUpdateSwipe(ctx context.Context, arg CreateOrUpdateSwipeParams) (Swipe, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	GetUser(ctx context.Context, username string) (User, error)
 	ListSwipableProfiles(ctx context.Context, arg ListSwipableProfilesParams) ([]ListSwipableProfilesRow, error)
 }
 

@@ -2,21 +2,26 @@ package controller
 
 import (
 	"database/sql"
-	"esim-service/config"
-	"esim-service/domain"
-	"esim-service/domain/order"
+	"fmt"
 	"net/http"
+	"simple-dating-app-service/config"
+	db "simple-dating-app-service/db/sqlc"
+	"simple-dating-app-service/domain"
+	"simple-dating-app-service/domain/user"
+	"simple-dating-app-service/token"
+	"simple-dating-app-service/util"
 
 	"github.com/gin-gonic/gin"
 )
 
 type UserController struct {
-	Usecase order.Usecase
-	Env     *config.Env
+	Usecase    user.Usecase
+	Env        *config.Env
+	TokenMaker token.Maker
 }
 
-func (oc *UserController) CreateOrder(c *gin.Context) {
-	var req order.CreateOrderReq
+func (uc *UserController) Register(c *gin.Context) {
+	var req user.RegisterUserReq
 
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
@@ -24,59 +29,64 @@ func (oc *UserController) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	order, err := oc.Usecase.CreatePendingOrder(c, req.EsimId, req.Quantity, req.Email)
+	hashedPassword, err := util.HashPassword(req.Password)
+	if err != nil {
+		fmt.Println("Error hashing password:", err)
+		return
+	}
+
+	arg := db.CreateUserParams{
+		Username: req.Username,
+		Password: hashedPassword,
+		Fullname: req.Fullname,
+		Email:    req.Email,
+	}
+
+	user, err := uc.Usecase.CreateUser(c, arg)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, order)
+	c.JSON(http.StatusOK, user)
 }
 
-func (oc *UserController) HandleOrderInvoicePaymentCallback(c *gin.Context) {
-	var req order.InvoicePaymentCallback
+func (uc *UserController) Login(ctx *gin.Context) {
+	var req user.LoginUserReq
 
-	err := c.ShouldBindJSON(&req)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, domain.ErrorResponse{Message: err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, domain.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	order, err := oc.Usecase.UpdateInvoicePaymentAndOrderUsimsa(c, req)
+	fetchedUser, err := uc.Usecase.GetUser(ctx, req.Username)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			c.JSON(http.StatusNotFound, domain.ErrorResponse{Message: err.Error()})
+			ctx.JSON(http.StatusNotFound, domain.ErrorResponse{Message: err.Error()})
 			return
 		}
-
-		c.JSON(http.StatusInternalServerError, domain.ErrorResponse{Message: err.Error()})
+		ctx.JSON(http.StatusInternalServerError, domain.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, order)
-}
-
-func (oc *UserController) HandleUsimsaSubscribeOrderCallback(c *gin.Context) {
-	if c.Request.Method == http.MethodPost {
-		var req order.UsimsaSubscribedOrderReq
-
-		err := c.ShouldBindJSON(&req)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, domain.ErrorResponse{Message: err.Error()})
-			return
-		}
-
-		order, err := oc.Usecase.SendPurchasedEsimEmail(c, req.TopupId, req.Iccid, req.Smdp, req.ActivateCode, req.QrcodeImgUrl)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, domain.ErrorResponse{Message: err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, order)
-
-	} else {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{
-			"message": "Invalid request method",
-		})
+	err = util.CheckPassword(req.Password, fetchedUser.Password)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, domain.ErrorResponse{Message: err.Error()})
+		return
 	}
+
+	accessToken, err := uc.TokenMaker.CreateToken(
+		fetchedUser.Username,
+		uc.Env.AccessTokenDuration,
+	)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, domain.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	rsp := user.LoginUserResponse{
+		AccessToken: accessToken,
+		User:        user.NewUserResponse(fetchedUser),
+	}
+	ctx.JSON(http.StatusOK, rsp)
 }
